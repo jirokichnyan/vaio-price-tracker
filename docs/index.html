@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VAIO VJPJ21 価格トラッカー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --bg: #15171B;
+    --panel: #1D2026;
+    --panel-hi: #23262D;
+    --line: #2C2F36;
+    --text: #ECEDEF;
+    --muted: #8B909B;
+    --gold: #C9A15A;
+    --teal: #4FA8A0;
+    --coral: #D97B7B;
+    --lilac: #9A8FD9;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Zen Kaku Gothic New', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  header{
+    border-bottom:1px solid var(--line);
+    padding:28px clamp(16px,4vw,48px) 20px;
+    display:flex; flex-direction:column; gap:4px;
+  }
+  .eyebrow{
+    color:var(--gold);
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+  }
+  h1{
+    margin:0;
+    font-weight:900;
+    font-size:clamp(22px,3.2vw,32px);
+    letter-spacing:-0.01em;
+  }
+  .sub{ color:var(--muted); font-size:14px; }
+
+  .ticker-wrap{
+    overflow:hidden;
+    border-bottom:1px solid var(--line);
+    background:var(--panel);
+  }
+  .ticker{
+    display:flex;
+    gap:40px;
+    padding:10px clamp(16px,4vw,48px);
+    white-space:nowrap;
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    color:var(--muted);
+  }
+  .ticker span.hot{ color:var(--gold); font-weight:700; }
+
+  main{
+    padding:28px clamp(16px,4vw,48px) 60px;
+    display:flex; flex-direction:column; gap:24px;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(160px,1fr));
+    gap:12px;
+  }
+  .stat{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:16px 18px;
+  }
+  .stat .label{ color:var(--muted); font-size:12px; letter-spacing:.04em; }
+  .stat .value{ font-family:'JetBrains Mono', monospace; font-size:24px; font-weight:700; margin-top:6px; color:var(--gold); }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:20px clamp(14px,2.5vw,24px);
+  }
+  .panel h2{
+    margin:0 0 4px;
+    font-size:16px;
+    font-weight:700;
+  }
+  .panel .desc{ color:var(--muted); font-size:13px; margin-bottom:16px; }
+
+  .controls{
+    display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:16px;
+  }
+  .controls label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    display:flex; align-items:center; gap:6px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .controls input[type=checkbox]{ accent-color:var(--gold); }
+
+  canvas{ max-width:100%; }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  th, td{
+    text-align:left;
+    padding:10px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  th{
+    color:var(--muted);
+    font-weight:500;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  td.price{ font-family:'JetBrains Mono', monospace; color:var(--gold); font-weight:600; }
+  .badge{
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:100px;
+    font-size:11px;
+    font-family:'JetBrains Mono', monospace;
+    background:var(--panel-hi);
+    border:1px solid var(--line);
+    color:var(--muted);
+  }
+  a.itemlink{ color:var(--teal); text-decoration:none; }
+  a.itemlink:hover{ text-decoration:underline; }
+
+  .empty{
+    color:var(--muted);
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    padding:40px 0;
+    text-align:center;
+  }
+
+  footer{
+    padding:20px clamp(16px,4vw,48px) 40px;
+    color:var(--muted);
+    font-size:12px;
+    font-family:'JetBrains Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Used Laptop Watch</div>
+  <h1>VAIO VJPJ21 価格トラッカー</h1>
+  <div class="sub">楽天市場の中古出品を毎日収集し、ランク・スペック別に価格推移を追跡します</div>
+</header>
+
+<div class="ticker-wrap">
+  <div class="ticker mono" id="ticker">データ読み込み中…</div>
+</div>
+
+<main>
+  <div class="grid" id="statGrid"></div>
+
+  <div class="panel">
+    <h2>価格推移</h2>
+    <div class="desc">ランク・メモリ／SSD容量ごとの平均価格の日次推移。凡例クリックで系列の表示/非表示を切り替えられます。</div>
+    <div class="controls" id="rankFilters"></div>
+    <canvas id="priceChart" height="110"></canvas>
+  </div>
+
+  <div class="panel">
+    <h2>直近の出品一覧</h2>
+    <div class="desc">最新収集日時点でのスナップショット</div>
+    <div id="tableWrap"><div class="empty">データ読み込み中…</div></div>
+  </div>
+</main>
+
+<footer>data source: 楽天市場商品検索API &middot; updated daily via GitHub Actions</footer>
+
+<script>
+const CSV_PATH = 'data/price_history.csv';
+const COLORS = ['#C9A15A', '#4FA8A0', '#D97B7B', '#9A8FD9', '#7FB08F', '#E0A96D', '#6FA8DC', '#C77DC7'];
+
+function groupKey(row){
+  const mem = row.memory_gb ? row.memory_gb + 'GB' : 'メモリ?';
+  const ssd = row.ssd_gb ? row.ssd_gb + 'GB' : 'SSD?';
+  return `${row.rank} / ${mem} / ${ssd}`;
+}
+
+function render(rows){
+  rows = rows.filter(r => r.price && r.itemCode);
+  if(rows.length === 0){
+    document.getElementById('ticker').textContent = 'まだ収集データがありません（初回のActions実行をお待ちください）';
+    document.getElementById('tableWrap').innerHTML = '<div class="empty">データがまだありません</div>';
+    return;
+  }
+
+  const dates = [...new Set(rows.map(r => r.collected_at))].sort();
+  const latestDate = dates[dates.length - 1];
+  const latestRows = rows.filter(r => r.collected_at === latestDate);
+
+  // --- stats ---
+  const prices = latestRows.map(r => Number(r.price));
+  const statGrid = document.getElementById('statGrid');
+  const stats = [
+    ['最終収集日', latestDate],
+    ['出品件数', latestRows.length + ' 件'],
+    ['最安値', '¥' + Math.min(...prices).toLocaleString()],
+    ['平均価格', '¥' + Math.round(prices.reduce((a,b)=>a+b,0)/prices.length).toLocaleString()],
+  ];
+  statGrid.innerHTML = stats.map(([l,v]) => `
+    <div class="stat"><div class="label">${l}</div><div class="value">${v}</div></div>
+  `).join('');
+
+  // --- ticker ---
+  const cheapest = [...latestRows].sort((a,b)=>a.price-b.price).slice(0,6);
+  document.getElementById('ticker').innerHTML = cheapest.map(r =>
+    `<span>${r.shopName} <span class="hot">¥${Number(r.price).toLocaleString()}</span> [${r.rank}]</span>`
+  ).join('');
+
+  // --- grouping for chart ---
+  const groups = {};
+  rows.forEach(r => {
+    const key = groupKey(r);
+    if(!groups[key]) groups[key] = {};
+    if(!groups[key][r.collected_at]) groups[key][r.collected_at] = [];
+    groups[key][r.collected_at].push(Number(r.price));
+  });
+
+  const groupNames = Object.keys(groups).sort();
+
+  // rank filter checkboxes
+  const filterWrap = document.getElementById('rankFilters');
+  filterWrap.innerHTML = groupNames.map((name, i) =>
+    `<label><input type="checkbox" checked data-idx="${i}"> <span class="badge">${name}</span></label>`
+  ).join('');
+
+  const datasets = groupNames.map((name, i) => ({
+    label: name,
+    data: dates.map(d => {
+      const vals = groups[name][d];
+      if(!vals) return null;
+      return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+    }),
+    borderColor: COLORS[i % COLORS.length],
+    backgroundColor: COLORS[i % COLORS.length],
+    spanGaps: true,
+    tension: 0.25,
+    pointRadius: 3,
+  }));
+
+  const ctx = document.getElementById('priceChart');
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: dates, datasets },
+    options: {
+      responsive: true,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: {
+          labels: { color: '#8B909B', font: { family:"'JetBrains Mono', monospace", size: 11 } }
+        },
+        tooltip: {
+          callbacks: {
+            label: (item) => `${item.dataset.label}: ¥${item.formattedValue}`
+          }
+        }
+      },
+      scales: {
+        x: { ticks:{ color:'#8B909B' }, grid:{ color:'#2C2F36' } },
+        y: { ticks:{ color:'#8B909B', callback:(v)=>'¥'+v.toLocaleString() }, grid:{ color:'#2C2F36' } }
+      }
+    }
+  });
+
+  filterWrap.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const idx = Number(cb.dataset.idx);
+      chart.setDatasetVisibility(idx, cb.checked);
+      chart.update();
+    });
+  });
+
+  // --- table ---
+  const sortedLatest = [...latestRows].sort((a,b)=>a.price-b.price);
+  document.getElementById('tableWrap').innerHTML = `
+    <table>
+      <thead><tr>
+        <th>価格</th><th>ランク</th><th>メモリ</th><th>SSD</th><th>ショップ</th><th>在庫</th><th>リンク</th>
+      </tr></thead>
+      <tbody>
+        ${sortedLatest.map(r => `
+          <tr>
+            <td class="price">¥${Number(r.price).toLocaleString()}</td>
+            <td><span class="badge">${r.rank}</span></td>
+            <td class="mono">${r.memory_gb ? r.memory_gb+'GB' : '-'}</td>
+            <td class="mono">${r.ssd_gb ? r.ssd_gb+'GB' : '-'}</td>
+            <td>${r.shopName}</td>
+            <td class="mono">${r.availability === '1' ? '在庫あり' : '在庫なし'}</td>
+            <td><a class="itemlink" href="${r.itemUrl}" target="_blank" rel="noopener">商品ページ</a></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+Papa.parse(CSV_PATH, {
+  download: true,
+  header: true,
+  skipEmptyLines: true,
+  complete: (res) => render(res.data),
+  error: () => {
+    document.getElementById('ticker').textContent = 'CSVの読み込みに失敗しました（初回収集がまだの可能性があります）';
+    document.getElementById('tableWrap').innerHTML = '<div class="empty">データがまだありません</div>';
+  }
+});
+</script>
+
+</body>
+</html>
