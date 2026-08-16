@@ -21,7 +21,8 @@ import time
 import datetime as dt
 from pathlib import Path
 from urllib.parse import urlencode
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError
 import json
 
 API_ENDPOINT = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701"
@@ -95,8 +96,24 @@ def fetch_items():
             params["affiliateId"] = affiliate_id
 
         url = f"{API_ENDPOINT}?{urlencode(params)}"
-        with urlopen(url, timeout=15) as resp:
-            data = json.load(resp)
+        req = Request(
+            url,
+            headers={
+                # 新基盤のBot対策でデフォルトUser-Agent/Refererなしのリクエストが
+                # 403で弾かれることがあるため明示的に付与する
+                "User-Agent": "Mozilla/5.0 (compatible; vaio-price-tracker/1.0; +https://github.com/)",
+                "Referer": "https://webservice.rakuten.co.jp/",
+            },
+        )
+        try:
+            with urlopen(req, timeout=15) as resp:
+                data = json.load(resp)
+        except HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            print(f"ERROR: HTTP {e.code} from Rakuten API", file=sys.stderr)
+            print(f"Response body: {body}", file=sys.stderr)
+            print(f"Request URL (secrets redacted): {url.split('?')[0]}?keyword={KEYWORD}&page={page}", file=sys.stderr)
+            sys.exit(1)
 
         page_items = data.get("Items", data.get("items", []))
         if not page_items:
