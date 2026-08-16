@@ -27,6 +27,10 @@ import json
 
 API_ENDPOINT = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701"
 KEYWORD = "VJPJ21"
+# 楽天ウェブサービスの管理画面 (https://webservice.rakuten.co.jp/app/list) で
+# 対象アプリの「許可されたWebサイト」に登録した値と完全に一致させること。
+# 一致していないと 403 REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING になる。
+ALLOWED_SITE = os.environ.get("RAKUTEN_ALLOWED_SITE", "https://github.com/")
 OUTPUT_CSV = Path(__file__).parent / "docs" / "data" / "price_history.csv"
 FIELDS = [
     "collected_at", "itemCode", "itemName", "shopName",
@@ -99,10 +103,11 @@ def fetch_items():
         req = Request(
             url,
             headers={
-                # 新基盤のBot対策でデフォルトUser-Agent/Refererなしのリクエストが
-                # 403で弾かれることがあるため明示的に付与する
+                # 新基盤のBot対策。Referer/Origin両方が必須で、値は楽天側アプリ設定の
+                # 「許可されたWebサイト」と完全一致している必要がある。
                 "User-Agent": "Mozilla/5.0 (compatible; vaio-price-tracker/1.0; +https://github.com/)",
-                "Referer": "https://webservice.rakuten.co.jp/",
+                "Referer": ALLOWED_SITE,
+                "Origin": ALLOWED_SITE.rstrip("/"),
             },
         )
         try:
